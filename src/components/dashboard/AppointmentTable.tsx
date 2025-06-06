@@ -263,7 +263,7 @@ export const AppointmentTable = ({
                         onClick={() => onStatusChange?.(appointment.id, 'completed', appointment.clientId)}
                         className="text-xs px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
                       >
-                        Complete
+                        Confirm
                       </button>
                       <button
                         onClick={() => onStatusChange?.(appointment.id, 'cancelled', appointment.clientId)}

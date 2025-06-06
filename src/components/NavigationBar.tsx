@@ -2,11 +2,13 @@
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from 'react-router-dom';
 import { BookingModal } from "./BookingModal";
 
 export const NavigationBar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const navigate = useNavigate();
   
   // Function to check if the device is mobile
   const checkIsMobile = () => {
@@ -87,7 +89,7 @@ export const NavigationBar = () => {
         </div>
         
         <div className="flex items-center space-x-3 md:space-x-4">
-          <Button variant="ghost" className="hidden md:flex text-white hover:text-amber-400 hover:bg-transparent">Log in</Button>
+          <Button variant="ghost" className="hidden md:flex text-white hover:text-amber-400 hover:bg-transparent" onClick={() => navigate('/dashboard/login')}>Log in</Button>
           
           {/* Mobile menu button */}
           <button 
@@ -168,7 +170,10 @@ export const NavigationBar = () => {
               <Button 
                 variant="ghost" 
                 className="w-full justify-center text-white hover:text-amber-400 hover:bg-transparent border border-gray-700"
-                onClick={() => setIsMenuOpen(false)}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  navigate('/dashboard/login');
+                }}
               >
                 Log in
               </Button>
