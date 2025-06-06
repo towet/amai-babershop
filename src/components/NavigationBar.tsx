@@ -57,7 +57,7 @@ export const NavigationBar = () => {
               className="font-['Bebas_Neue'] text-3xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-amber-500 to-orange-500 relative z-10 transform -rotate-2 pr-1"
               style={{ textShadow: '2px 2px 0px rgba(0,0,0,0.3)' }}
             >
-              
+              AMAI
             </div>
             <div 
               className="font-['Lato'] text-xs font-light uppercase tracking-[0.3em] text-white transform translate-y-1 pl-1 border-l-2 border-orange-400"
@@ -104,19 +104,41 @@ export const NavigationBar = () => {
       
       {/* Mobile menu - fixed implementation */}
       {isMenuOpen && (
-        <div className="fixed inset-0 top-0 left-0 w-full h-full pt-16 z-[100] bg-black/95 backdrop-blur-xl flex flex-col overflow-y-auto">
-          <div className="absolute top-4 right-4">
+        <div className="fixed inset-0 top-0 left-0 w-full h-full z-[100] bg-neutral-900 backdrop-blur-xl flex flex-col">
+          <div className="absolute top-4 right-4 z-10"> {/* Ensure close button is above content */} 
             <button
               onClick={() => setIsMenuOpen(false)}
-              className="p-2 rounded-full bg-gray-800/80 text-white hover:bg-gray-700/80 transition-colors duration-300"
+              className="p-2 rounded-full bg-gray-700/80 text-white hover:bg-gray-600/80 transition-colors duration-300"
               aria-label="Close menu"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
-          
-          <div className="px-6 py-8 flex-1">
-            <div className="flex flex-col space-y-6">
+          {/* Scrollable content area */} 
+          <div className="flex-1 overflow-y-auto pt-20 px-6 pb-8"> {/* Adjusted top padding */} 
+            <div className="space-y-3 mb-8"> {/* Buttons now first, with margin below */} 
+              <Button 
+                variant="default" 
+                className="w-full justify-center bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white py-3"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  navigate('/dashboard/login');
+                }}
+              >
+                Log in
+              </Button>
+              <Button 
+                className="w-full justify-center bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-3"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setIsBookingModalOpen(true);
+                }}
+              >
+                Book now
+              </Button>
+            </div>
+            
+            <div className="flex flex-col space-y-6"> {/* Nav links second */} 
               <a 
                 href="#about-us" 
                 className="text-xl font-medium text-white border-b border-gray-800 pb-4 hover:text-amber-400 transition-colors duration-300"
@@ -164,28 +186,6 @@ export const NavigationBar = () => {
               >
                 Contact Us
               </a>
-            </div>
-            
-            <div className="mt-10 space-y-3">
-              <Button 
-                variant="ghost" 
-                className="w-full justify-center text-white hover:text-amber-400 hover:bg-transparent border border-gray-700"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  navigate('/dashboard/login');
-                }}
-              >
-                Log in
-              </Button>
-              <Button 
-                className="w-full justify-center bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  setIsBookingModalOpen(true);
-                }}
-              >
-                Book now
-              </Button>
             </div>
           </div>
         </div>

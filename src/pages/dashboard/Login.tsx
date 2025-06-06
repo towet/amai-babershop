@@ -32,14 +32,10 @@ const Login = () => {
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="absolute inset-0 z-0 bg-white">
-        <div className="absolute left-0 top-0 h-full w-1/2 bg-black"></div>
-      </div>
-      
+    <div className="min-h-screen flex items-center justify-center bg-gray-900">
       <div className="relative z-10 w-full max-w-md px-6">
         <div className="overflow-hidden rounded-2xl shadow-xl">
-          <div className="bg-black px-8 pt-8 pb-6">
+          <div className="bg-neutral-800 px-8 pt-8 pb-6">
             <div className="mb-6 text-center">
               <div className="relative mb-4 inline-block">
                 <div className="font-['Bebas_Neue'] text-5xl tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 relative z-10 transform -rotate-2 pr-1">
@@ -73,7 +69,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="mt-1 block w-full rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-white shadow-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="mt-1 block w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-white shadow-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   placeholder="manager@amaibarbershop.com"
                 />
               </div>
@@ -89,7 +85,7 @@ const Login = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="mt-1 block w-full rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-white shadow-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="mt-1 block w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-white shadow-sm focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
                   placeholder="Enter password"
                 />
                 <p className="mt-1 text-xs text-gray-500">
@@ -117,13 +113,13 @@ const Login = () => {
             </div>
           </div>
           
-          <div className="bg-white px-8 py-6">
+          <div className="bg-neutral-700 px-8 py-6">
             <div className="flex items-center justify-center">
               <div className="text-center">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-400">
                   © {new Date().getFullYear()} Amai Men's Care
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-300">
                   Modern barbershop management system
                 </p>
               </div>

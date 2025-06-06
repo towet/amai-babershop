@@ -55,7 +55,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       name: 'Walk-ins', 
       icon: <Clock size={20} />, 
       path: '/dashboard/walk-ins', 
-      visible: isManager 
+      visible: false 
     },
     { 
       name: 'Reviews', 
