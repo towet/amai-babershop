@@ -53,10 +53,10 @@ const Index = () => {
               className="relative"
             >
               <div className="font-['Lato'] text-6xl font-light tracking-[0.3em] text-orange-400 uppercase relative z-10 transform -rotate-2 pr-1">
-                Amai
+                A M A I
               </div>
               <div className="font-['Lato'] text-sm font-light uppercase tracking-[0.3em] text-white transform translate-y-1 pl-1 border-l-2 border-orange-400">
-                BARBERSHOP
+                MEN'S CARE
               </div>
               <div className="absolute -inset-6 bg-gradient-to-r from-orange-500/10 to-amber-500/10 rounded-full blur-xl animate-pulse" />
             </motion.div>
