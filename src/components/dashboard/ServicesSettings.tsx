@@ -64,11 +64,14 @@ export const ServicesSettings = () => {
     e.preventDefault();
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
+    const originalPrice = Number(formData.get('price'));
+    const discountPercentage = Number(formData.get('discount_percentage')) || 0;
+
     const serviceData = {
       name: formData.get('name') as string,
-      price: Number(formData.get('price')),
+      price: originalPrice,
       duration_minutes: Number(formData.get('duration_minutes')),
-      discount_percentage: Number(formData.get('discount_percentage')),
+      discount_percentage: discountPercentage,
       is_popular: formData.get('is_popular') === 'on',
     };
 
@@ -216,67 +219,5 @@ export const ServicesSettings = () => {
     </div>
   );
 };
-  const fetchServices = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.from("services").select("*").order("id", { ascending: true });
-    if (error) {
-      toast({ title: "Error fetching services", description: error.message, variant: "destructive" });
-    } else {
-      setServices(data || []);
-    }
-    setLoading(false);
-  };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  const handleEdit = (service: Service) => {
-    setEditingId(service.id);
-    setForm(service);
-  };
-
-  const handleCancel = () => {
-    setEditingId(null);
-    setForm({});
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("Are you sure you want to delete this service?")) return;
-    const { error } = await supabase.from("services").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Error deleting service", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Service deleted" });
-      fetchServices();
-    }
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    if (editingId) {
-      // Update
-      const { error } = await supabase.from("services").update(form).eq("id", editingId);
-      if (error) {
-        toast({ title: "Error updating service", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Service updated" });
-        setEditingId(null);
-        setForm({});
-        fetchServices();
-      }
-    } else {
-      // Create
-      const { error } = await supabase.from("services").insert([{ ...form, price: Number(form.price) }]);
-      if (error) {
-        toast({ title: "Error adding service", description: error.message, variant: "destructive" });
-      } else {
-        toast({ title: "Service added" });
-        setForm({});
-        fetchServices();
-      }
-    }
-    setSaving(false);
-  };
 

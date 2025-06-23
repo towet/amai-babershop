@@ -18,6 +18,7 @@ export const getAllServices = async (): Promise<Service[]> => {
       description: item.description || undefined,
       duration: item.duration,
       price: item.price,
+      discount_percentage: item.discount_percentage,
     }));
   } catch (error) {
     console.error('Error fetching services:', error);

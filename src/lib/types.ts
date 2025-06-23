@@ -110,6 +110,7 @@ export interface Service {
   description?: string;
   duration: number; // in minutes
   price: number;
+  discount_percentage?: number; // Optional discount percentage
 }
 
 export interface DashboardStats {

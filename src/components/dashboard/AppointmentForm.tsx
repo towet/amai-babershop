@@ -91,6 +91,24 @@ const AppointmentForm = ({ appointment, onSubmit, onCancel, onDelete }: Appointm
       }
     };
     fetchData();
+
+    // Listen for the custom event and refetch services when it fires
+    const handleServicesUpdated = () => {
+      getAllServices().then((servicesData) => {
+        setLiveServices(servicesData);
+        // If a service is currently selected, update it with the new data
+        if (form.serviceId) {
+          const updatedService = servicesData.find(s => s.id === form.serviceId);
+          if (updatedService) {
+            setSelectedService(updatedService);
+          }
+        }
+      });
+    };
+    window.addEventListener('servicesUpdated', handleServicesUpdated);
+    return () => {
+      window.removeEventListener('servicesUpdated', handleServicesUpdated);
+    };
   }, [appointment, form.serviceId, form.barberId]); // Fetch data on mount with dependencies
 
   useEffect(() => {
@@ -102,18 +120,26 @@ const AppointmentForm = ({ appointment, onSubmit, onCancel, onDelete }: Appointm
   }, [appointment]);
 
   useEffect(() => {
-    // When service changes, update price and duration in the form
+    // When service or barber changes, update price, duration, and commission
     if (selectedService) {
-      const price = selectedService.price;
-      const duration = selectedService.duration;
-      const commissionAmount = selectedBarber ? (price * selectedBarber.commissionRate) / 100 : 0;
+      const basePrice = selectedService.price || 0;
+      const discount = selectedService.discount_percentage || 0;
       
+      // Calculate the final price after discount
+      const finalPrice = Math.round(basePrice * (1 - discount / 100));
+      
+      let commissionAmount = 0;
+      if (selectedBarber) {
+        const commissionRate = selectedBarber.commissionRate || 0;
+        // Calculate commission based on the final price
+        commissionAmount = Math.round(finalPrice * (commissionRate / 100));
+      }
+
       setForm(prev => ({
         ...prev,
-        serviceId: selectedService.id,
-        price,
-        duration,
-        commissionAmount
+        price: finalPrice,
+        duration: selectedService.duration,
+        commissionAmount: commissionAmount,
       }));
     }
   }, [selectedService, selectedBarber]);

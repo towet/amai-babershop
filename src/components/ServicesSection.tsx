@@ -191,10 +191,7 @@ export const ServicesSection = () => {
                   
                   <div className="flex justify-between items-end">
                     <div className="flex flex-col">
-                      <div className="flex items-center mb-1 bg-gray-800/60 px-2 py-0.5 rounded-full inline-flex">
-                        <Clock className="w-3 h-3 mr-1.5 text-amber-400" />
-                        <span className="text-xs font-medium text-white">{service.duration_minutes || "-"} min</span>
-                      </div>
+
                       <div className="flex items-baseline gap-2">
                         {service.discount_percentage && service.discount_percentage > 0 ? (
                           <>
