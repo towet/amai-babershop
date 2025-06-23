@@ -1,0 +1,22 @@
+ERROR:  23502: null value in column "total_commission" of relation "barbers" violates not-null constraint
+DETAIL:  Failing row contains (45bde54b-8dbc-4f65-8886-56176b03d4bb, farad, farad@amaimenscare.com, 0702669633, 32, beard trim, expert experienced in beard trim , https://www.iwusports.com/images/2019/10/11/mb_Painter_Samual_20..., 2025-06-02 00:00:00+00, 0, 0, 0, 50, null, t, null, @Frank9408, 2025-06-02 13:36:48.601323+00, 2025-06-02 15:39:19.121504+00).
+CONTEXT:  SQL statement "UPDATE barbers b
+  SET 
+    total_cuts = stats.total,
+    appointment_cuts = stats.appointment_count,
+    walk_in_cuts = stats.walk_in_count,
+    total_commission = stats.total_commission
+  FROM (
+    SELECT 
+      barber_id,
+      COUNT(*) FILTER (WHERE status = 'completed') AS total,
+      COUNT(*) FILTER (WHERE status = 'completed' AND type = 'appointment') AS appointment_count,
+      COUNT(*) FILTER (WHERE status = 'completed' AND type = 'walk-in') AS walk_in_count,
+      SUM(commission_amount) FILTER (WHERE status = 'completed') AS total_commission
+    FROM 
+      appointments
+    GROUP BY 
+      barber_id
+  ) AS stats
+  WHERE b.id = stats.barber_id"
+PL/pgSQL function update_barber_stats() line 4 at SQL statement
