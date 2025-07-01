@@ -78,7 +78,7 @@ const getStatsForDate = async (targetDate: Date) => {
   const dateString = targetDate.toISOString().split('T')[0];
   const { data: appointments, error } = await supabase
     .from('appointments')
-    .select('type, price, services (price)') // Assuming 'price' on appointments is the final price
+    .select('type, price, commission_amount') // Assuming 'price' on appointments is the final price
     .eq('date', dateString);
 
   if (error) {
@@ -89,12 +89,16 @@ const getStatsForDate = async (targetDate: Date) => {
   const scheduled = appointments.filter(app => app.type === 'appointment');
   const walkIns = appointments.filter(app => app.type === 'walk-in');
   // Ensure price is a number, default to 0 if null or undefined
-  const revenue = appointments.reduce((sum, app) => sum + (Number(app.price) || 0), 0);
+  const totalRevenue = appointments.reduce((sum, app) => sum + (Number(app.price) || 0), 0);
+  const totalCommission = appointments.reduce((sum, app) => sum + (Number(app.commission_amount) || 0), 0);
+  const shopRevenue = totalRevenue - totalCommission;
   
   return {
     count: scheduled.length,
     walkIns: walkIns.length,
-    revenue,
+    revenue: totalRevenue,
+    shopRevenue: shopRevenue,
+    barberCommission: totalCommission,
   };
 };
 
@@ -200,7 +204,11 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       const dayStats = await getStatsForDate(day);
       const dayName = dayNames[day.getDay()];
 
-      weeklyRevenueData.push({ name: dayName, value: dayStats.revenue });
+      weeklyRevenueData.push({
+        name: dayName,
+        shopRevenue: dayStats.shopRevenue,
+        barberCommission: dayStats.barberCommission,
+      });
       weeklyAppointmentsData.push({ name: dayName, value: dayStats.count + dayStats.walkIns });
     }
 

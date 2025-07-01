@@ -19,7 +19,7 @@ type Service = {
 export const ServicesSection = () => {
   const sectionRef = useRef<HTMLDivElement>(null);
   const [activeCategory, setActiveCategory] = useState<string>("all");
-  const [hoveredService, setHoveredService] = useState<number | null>(null);
+  const [hoveredService, setHoveredService] = useState<string | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<string>("");
   
@@ -35,27 +35,42 @@ export const ServicesSection = () => {
   // Service data (dynamic from Supabase)
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const fetchServices = async () => {
+    setLoading(true);
+    const { supabase } = await import("@/lib/supabase");
+    const { data, error } = await supabase.from("services").select("*").order("created_at");
+    if (data) {
+      const servicesWithUrls = await Promise.all(
+        data.map(async (service: any) => {
+          let imageUrl = undefined;
+          if (service.image_key) {
+            const { data: urlData } = await supabase.storage.from("service-images").getPublicUrl(service.image_key);
+            if (urlData?.publicUrl) imageUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+          }
+          return { ...service, imageUrl };
+        })
+      );
+      setServices(servicesWithUrls);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchServices = async () => {
-      setLoading(true);
-      const { supabase } = await import("@/lib/supabase");
-      const { data, error } = await supabase.from("services").select("*").order("created_at");
-      if (data) {
-        const servicesWithUrls = await Promise.all(
-          data.map(async (service: any) => {
-            let imageUrl = undefined;
-            if (service.image_key) {
-              const { data: urlData } = await supabase.storage.from("service-images").getPublicUrl(service.image_key);
-              if (urlData?.publicUrl) imageUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-            }
-            return { ...service, imageUrl };
-          })
-        );
-        setServices(servicesWithUrls);
-      }
-      setLoading(false);
+    fetchServices(); // Fetch initial data
+
+    const handleServicesUpdate = () => {
+      console.log('Event servicesUpdated received, refetching services...');
+      fetchServices();
     };
-    fetchServices();
+
+    // Listen for the custom event to refresh data
+    window.addEventListener('servicesUpdated', handleServicesUpdate);
+
+    // Cleanup listener on component unmount
+    return () => {
+      window.removeEventListener('servicesUpdated', handleServicesUpdate);
+    };
   }, []);
 
   // Filter services based on active category

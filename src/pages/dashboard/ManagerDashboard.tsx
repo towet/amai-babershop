@@ -147,15 +147,18 @@ const ManagerDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <BarChartComponent
             data={weeklyRevenue}
-            dataKey="value"
+            bars={[
+              { key: 'shopRevenue', color: '#10B981', name: 'Shop Revenue' },
+              { key: 'barberCommission', color: '#3B82F6', name: 'Barber Commission' }
+            ]}
             title="Weekly Revenue"
             isCurrency={true}
+            stacked={true}
           />
           <BarChartComponent
             data={weeklyAppointments}
-            dataKey="value"
+            bars={[{ key: 'value', color: '#F97316', name: 'Appointments' }]}
             title="Weekly Appointments"
-            barColor="#3B82F6"
           />
         </div>
         

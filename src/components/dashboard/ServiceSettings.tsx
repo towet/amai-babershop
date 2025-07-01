@@ -37,12 +37,14 @@ const ServiceSettings = () => {
   }, []);
 
   const fetchServices = async () => {
+    console.log('[DEBUG] Fetching services...');
     setLoading(true);
     const { data, error } = await supabase.from('services').select('*').order('id', { ascending: true });
     if (error) {
       toast({ title: 'Error fetching services', description: error.message, variant: 'destructive' });
     } else {
       setServices(data);
+      console.log('[DEBUG] Services fetched:', data);
     }
     setLoading(false);
   };
@@ -74,16 +76,20 @@ const ServiceSettings = () => {
   };
 
   const handleDelete = async (id, imageUrl) => {
+    console.log('[DEBUG] Deleting service with id:', id, 'imageUrl:', imageUrl);
     const { error } = await supabase.from('services').delete().eq('id', id);
     if (error) {
       toast({ title: 'Error deleting service', description: error.message, variant: 'destructive' });
     } else {
+      console.log('[DEBUG] Service deleted, removing image if present...');
       // Optionally remove image from storage
       if (imageUrl) {
         const path = imageUrl.split('/').pop().split('?')[0];
         await supabase.storage.from(SERVICE_IMAGE_BUCKET).remove([path]);
+        console.log('[DEBUG] Image removed from storage:', path);
       }
       toast({ title: 'Service deleted successfully' });
+      console.log('[DEBUG] Service deleted successfully, refreshing list...');
       fetchServices();
     }
   };
@@ -201,6 +207,7 @@ const ServiceSettings = () => {
               ) : services.length === 0 ? (
                 <tr><td colSpan={7} className="text-center py-8 text-gray-500">No services found.</td></tr>
               ) : (
+                // [DEBUG] Rendering services list. Each row uses service.id as key.
                 services.map((service) => (
                   <tr key={service.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2"><img src={service.image} alt="Service" className="w-16 h-16 object-cover rounded" /></td>

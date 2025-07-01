@@ -189,12 +189,14 @@ export const createAppointment = async (appointment: Omit<Appointment, 'id' | 'c
       notes: appointment.notes
     };
     
-    // Only include client_id if it's not a walk-in or if it's a valid UUID
-    if (appointment.type === 'walk-in') {
-      appointmentData.walk_in_client_name = appointment.walkInClientName;
-    } else if (appointment.clientId && appointment.clientId.length > 10) { 
-      // Simple validation to ensure it's not a mock ID - UUID should be much longer
+    // Handle client linking
+    if (appointment.clientId && appointment.clientId.length > 10) {
+      // Link to existing client record regardless of appointment type
       appointmentData.client_id = appointment.clientId;
+    }
+    // If user also typed a custom walk-in name, store it for display
+    if (appointment.walkInClientName) {
+      appointmentData.walk_in_client_name = appointment.walkInClientName;
     }
     
     // Create the appointment

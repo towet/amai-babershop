@@ -82,9 +82,10 @@ export const AppointmentTable = ({
   
   const getClientName = (appointment: Appointment) => {
     // If there's a walkInClientName, use it as primary source
-    if (appointment.walkInClientName) {
+    const walkInName = appointment.walkInClientName || (appointment as any).walk_in_client_name;
+    if (walkInName) {
       const isActualWalkIn = appointment.type === 'walk-in';
-      return isActualWalkIn ? `${appointment.walkInClientName} (Walk-in)` : appointment.walkInClientName;
+      return isActualWalkIn ? `${walkInName} (Walk-in)` : walkInName;
     }
     
     // Prefer name from joined client data if available
@@ -93,12 +94,19 @@ export const AppointmentTable = ({
     }
     
     // Fallback to looking up in the fetched clients list using clientId
-    if (appointment.clientId) {
-      const client = clients.find(c => c.id === appointment.clientId);
-      return client ? client.name : 'Unknown Client';
+    // Check camelCase clientId or snake_case client_id
+    const clientId = appointment.clientId || (appointment as any).client_id;
+    if (clientId) {
+      const client = clients.find(c => c.id === clientId);
+      return client ? client.name : appointment.type === 'walk-in' ? 'Walk-in Client' : 'Unknown Client';
     }
     
-    return 'Unknown Client'; // Default if no walkInClientName and no clientId/joined client
+    // If no clientId and it's a walk-in, default label
+    if (appointment.type === 'walk-in') {
+      return 'Walk-in Client';
+    }
+    
+    return 'Unknown Client';
   };  
   
   const toggleExpand = (id: string) => {

@@ -13,6 +13,8 @@ import AppointmentsManagement from "./pages/dashboard/AppointmentsManagement";
 import ClientsManagement from "./pages/dashboard/ClientsManagement";
 import WalkInManagement from "./pages/dashboard/WalkInManagement";
 import Reports from "./pages/dashboard/Reports";
+import FinancialsPage from './pages/dashboard/Financials';
+import BarberFinancialsPage from './pages/dashboard/BarberFinancials';
 import ReviewsManagement from "./pages/dashboard/ReviewsManagement";
 import Settings from "./pages/dashboard/Settings";
 import Profile from "./pages/dashboard/Profile";
@@ -89,6 +91,20 @@ const App = () => (
               <Route path="reports" element={
                 <ProtectedRoute allowedRoles={["manager"]}>
                   <Reports />
+                </ProtectedRoute>
+              } />
+
+              {/* Financials Report */}
+              <Route path="financials" element={
+                <ProtectedRoute allowedRoles={["manager"]}>
+                  <FinancialsPage />
+                </ProtectedRoute>
+              } />
+
+              {/* Barber Financials Report */}
+              <Route path="my-earnings" element={
+                <ProtectedRoute allowedRoles={["barber"]}>
+                  <BarberFinancialsPage />
                 </ProtectedRoute>
               } />
               

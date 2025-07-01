@@ -2,7 +2,7 @@ import { ReactNode, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Calendar, Users, Scissors, BarChart3, 
-  LogOut, Menu, X, Home, UserCircle, Clock, Star, Settings as SettingsIcon
+  LogOut, Menu, X, Home, UserCircle, Clock, Star, Settings as SettingsIcon, DollarSign
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/auth-context';
 import AmaiLogo from '@/components/AmaiLogo';
@@ -33,6 +33,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       icon: <BarChart3 size={20} />, 
       path: '/dashboard', 
       visible: true 
+    },
+    { 
+      name: 'Financial Report', 
+      icon: <BarChart3 size={20} />, 
+      path: '/dashboard/financials', 
+      visible: isManager 
     },
     { 
       name: 'Appointments', 
@@ -75,6 +81,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       name: 'My Profile', 
       icon: <UserCircle size={20} />, 
       path: '/dashboard/profile', 
+      visible: !isManager 
+    },
+    { 
+      name: 'My Earnings', 
+      icon: <DollarSign size={20} />, 
+      path: '/dashboard/my-earnings', 
       visible: !isManager 
     }
   ];
@@ -180,7 +192,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
               {/* Left space for mobile sidebar toggle */}
               <div className="w-8 md:hidden"></div>
               <h1 className="text-base md:text-xl font-['Lato'] font-light tracking-[0.3em] text-gray-900 ml-6 md:ml-0 truncate uppercase">
-                <span class="text-orange-400">Amai</span> Men's Care
+                <span className="text-orange-400">Amai</span> Men's Care
               </h1>
             </div>
             <div className="flex items-center">

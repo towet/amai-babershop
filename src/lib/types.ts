@@ -2,6 +2,17 @@
 
 export type UserRole = 'manager' | 'barber';
 
+export type FinancialEntry = {
+  id: string;
+  date: string;
+  serviceName: string;
+  barberName: string;
+  totalRevenue: number;
+  barberCommission: number;
+  shopRevenue: number;
+  status: string;
+};
+
 export interface ChartData {
   name: string;
   value: number;

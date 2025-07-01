@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 
 interface StatCardProps {
   title: string;
-  value: string | number;
+  value: ReactNode;
   icon: ReactNode;
   trend?: number;
   description?: string;
@@ -23,7 +23,7 @@ export const StatCard = ({
         <div>
           <p className="text-sm font-medium text-gray-500">{title}</p>
           <p className="mt-2 text-3xl font-bold text-gray-900">
-            {isCurrency && '₺'}{value}
+            {isCurrency && (typeof value === 'string' || typeof value === 'number') && '₺'}{value}
           </p>
           {trend !== undefined && (
             <div className={`mt-1 flex items-center text-sm ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>

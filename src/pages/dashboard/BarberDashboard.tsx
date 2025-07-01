@@ -586,7 +586,7 @@ const BarberDashboard = () => {
           {barber && typeof barber.rating === 'number' && (
             <StatCard
               title="My Rating"
-              valueComponent={renderStarRating(barber.rating, 5)}
+              value={renderStarRating(barber.rating, 5)}
               icon={<Star size={24} className="text-amber-500" />}
               description={`Based on ${barber.reviews?.filter(r => r.approved).length || 0} approved reviews`}
             />
@@ -865,26 +865,7 @@ const BarberDashboard = () => {
                 <p>Upcoming appointments count: {upcomingAppointments?.length || 0}</p>
               </div>
               
-              {/* Test Data Generation Button - only visible in development for easier testing */}
-              {(import.meta.env.DEV || window.location.hostname === 'localhost') && (
-                <button
-                  onClick={handleGenerateTestAppointments}
-                  disabled={isGeneratingTestData}
-                  className="mt-4 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-amber-600 hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 disabled:opacity-50"
-                >
-                  {isGeneratingTestData ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle className="w-4 h-4 mr-2" />
-                      Generate Test Appointments
-                    </>
-                  )}
-                </button>
-              )}
+
             </div>
           )}
         </div>

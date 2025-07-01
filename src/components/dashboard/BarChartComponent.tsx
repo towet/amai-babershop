@@ -1,4 +1,4 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ChartData {
   name: string;
@@ -8,34 +8,49 @@ interface ChartData {
 
 interface BarChartComponentProps {
   data: ChartData[];
-  dataKey: string;
-  barColor?: string;
+  bars: { key: string; color: string; name?: string }[];
   title: string;
   height?: number;
   isCurrency?: boolean;
+  stacked?: boolean;
 }
 
 export const BarChartComponent = ({ 
   data,
-  dataKey,
-  barColor = "#F59E0B",
+  bars,
   title,
   height = 300,
-  isCurrency = false
+  isCurrency = false,
+  stacked = false
 }: BarChartComponentProps) => {
   
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const total = payload.reduce((sum, p) => sum + p.value, 0);
       return (
-        <div className="bg-black p-3 rounded shadow text-white text-sm">
-          <p className="mb-1">{`${label}`}</p>
-          <p className="text-amber-400 font-semibold">
-            {isCurrency ? '₺' : ''}{payload[0].value}
-          </p>
+        <div className="bg-black p-3 rounded shadow text-white text-sm min-w-[150px]">
+          <p className="mb-2 font-semibold">{label}</p>
+          {payload.map((pld: any) => (
+            <div key={pld.dataKey} className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: pld.fill }}></div>
+                <span>{pld.name}:</span>
+              </div>
+              <span className="font-semibold">{isCurrency ? '₺' : ''}{pld.value.toFixed(2)}</span>
+            </div>
+          ))}
+          {payload.length > 1 && (
+            <>
+              <hr className="my-2 border-gray-600" />
+              <div className="flex items-center justify-between gap-4 font-bold">
+                <span>Total:</span>
+                <span>{isCurrency ? '₺' : ''}{total.toFixed(2)}</span>
+              </div>
+            </>
+          )}
         </div>
       );
     }
-  
     return null;
   };
 
@@ -61,12 +76,18 @@ export const BarChartComponent = ({
             tickFormatter={(value) => isCurrency ? `₺${value}` : value.toString()}
           />
           <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }} />
-          <Bar 
-            dataKey={dataKey} 
-            fill={barColor} 
-            radius={[4, 4, 0, 0]}
-            barSize={30}
-          />
+          <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }}/>
+          {bars.map(bar => (
+            <Bar 
+              key={bar.key}
+              dataKey={bar.key} 
+              name={bar.name}
+              fill={bar.color} 
+              stackId={stacked ? 'a' : undefined}
+              radius={stacked ? undefined : [4, 4, 0, 0]}
+              barSize={30}
+            />
+          ))}
         </BarChart>
       </ResponsiveContainer>
     </div>

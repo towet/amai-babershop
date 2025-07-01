@@ -13,12 +13,13 @@ export type Service = {
   id: string;
   created_at: string;
   name: string;
+  description?: string;
   price: number;
-  duration_minutes?: number;
+  duration: number;
+  discount_percentage: number;
+  is_popular: boolean;
   image_key?: string;
-  discount_percentage?: number;
-  is_popular?: boolean;
-  imageUrl?: string; // For frontend use
+  imageUrl?: string;
 };
 
 export const ServicesSettings = () => {
@@ -50,6 +51,7 @@ export const ServicesSettings = () => {
         return { ...service, imageUrl };
       }));
       setServices(servicesWithUrls);
+      console.log('[DEBUG] Services fetched:', servicesWithUrls);
     }
     setLoading(false);
   };
@@ -66,8 +68,9 @@ export const ServicesSettings = () => {
     const formData = new FormData(e.currentTarget);
     const serviceData = {
       name: formData.get('name') as string,
+      description: (formData.get('description') as string) || '',
       price: Number(formData.get('price')),
-      duration_minutes: Number(formData.get('duration_minutes')),
+      duration: parseInt(formData.get('duration') as string, 10) || 0,
       discount_percentage: Number(formData.get('discount_percentage')),
       is_popular: formData.get('is_popular') === 'on',
     };
@@ -98,6 +101,7 @@ export const ServicesSettings = () => {
       }
     } else {
       // Create new service
+      console.log('[DEBUG] Submitting service payload:', payload);
       const { error } = await supabase.from('services').insert(payload);
       if (error) {
         toast({ title: 'Error creating service', description: error.message, variant: 'destructive' });
@@ -114,17 +118,37 @@ export const ServicesSettings = () => {
   };
 
   const handleDelete = async (serviceId: string, imageKey?: string) => {
+    console.log('[DEBUG] Attempting to delete service with id:', serviceId);
     if (!window.confirm('Are you sure you want to delete this service?')) return;
+
     const { error } = await supabase.from('services').delete().eq('id', serviceId);
+
     if (error) {
+      console.error('[DEBUG] Error deleting service from database:', error);
       toast({ title: 'Error deleting service', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Service deleted' });
-      if (imageKey) {
-        await supabase.storage.from('service-images').remove([imageKey]);
-      }
-      fetchServices();
+      return;
     }
+
+    console.log('[DEBUG] Service successfully deleted from database.');
+    toast({ title: 'Service deleted' });
+
+    if (imageKey) {
+      console.log('[DEBUG] Removing image from storage:', imageKey);
+      const { error: storageError } = await supabase.storage.from('service-images').remove([imageKey]);
+      if (storageError) {
+        // Log the error but don't block the UI update, as the main record is gone.
+        console.error('[DEBUG] Error removing image from storage:', storageError);
+        toast({ title: 'Could not delete image file', description: storageError.message, variant: 'destructive' });
+      } else {
+        console.log('[DEBUG] Image successfully removed from storage.');
+      }
+    }
+
+    // Update UI state immediately
+    setServices(currentServices =>
+      currentServices.filter(service => service.id !== serviceId)
+    );
+    console.log('[DEBUG] Service removed from local state, UI should update.');
   };
 
   const openEditDialog = (service: Service) => {
@@ -162,8 +186,12 @@ export const ServicesSettings = () => {
                 <Input id="price" name="price" type="number" defaultValue={editingService?.price} className="col-span-3" required />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="duration_minutes" className="text-right">Duration (min)</Label>
-                <Input id="duration_minutes" name="duration_minutes" type="number" defaultValue={editingService?.duration_minutes} className="col-span-3" />
+                <Label htmlFor="description" className="text-right">Description</Label>
+                <Input id="description" name="description" defaultValue={editingService?.description} className="col-span-3" />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="duration" className="text-right">Duration (min)</Label>
+                <Input id="duration" name="duration" type="number" defaultValue={editingService?.duration} className="col-span-3" required />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="discount_percentage" className="text-right">Discount (%)</Label>
@@ -192,6 +220,7 @@ export const ServicesSettings = () => {
           <div className="flex justify-center items-center h-32"><Loader2 className="h-8 w-8 animate-spin text-amber-600" /></div>
         ) : (
           <div className="space-y-4">
+            // [DEBUG] Rendering services list. Each row uses service.id as key.
             {services.map((service) => (
               <div key={service.id} className="flex items-center justify-between p-3 border rounded-md">
                 <div className="flex items-center gap-4">
@@ -200,7 +229,7 @@ export const ServicesSettings = () => {
                   </div>
                   <div>
                     <p className="font-semibold">{service.name}</p>
-                    <p className="text-sm text-gray-600">{service.price} Lira - {service.duration_minutes} min</p>
+                    <p className="text-sm text-gray-600">{service.price} Lira - {service.duration} min</p>
                     {service.discount_percentage > 0 && <p className="text-sm text-green-600">{service.discount_percentage}% off</p>}
                   </div>
                 </div>
@@ -268,7 +297,7 @@ export const ServicesSettings = () => {
       }
     } else {
       // Create
-      const { error } = await supabase.from("services").insert([{ ...form, price: Number(form.price) }]);
+      const { error } = await supabase.from("services").insert([{ ...form, price: Number(form.price), duration: parseInt((form as any).duration, 10) || 0 }]);
       if (error) {
         toast({ title: "Error adding service", description: error.message, variant: "destructive" });
       } else {
