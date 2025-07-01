@@ -17,7 +17,7 @@ export const getAllClients = async (): Promise<Client[]> => {
           .from('appointments')
           .select('*', { count: 'exact', head: true })
           .eq('client_id', client.id)
-          .eq('status', 'completed');
+          .eq('status', 'completed'); // Both walk-in and appointment types are included since we only filter by status
 
         if (countError) {
           console.error(`Error fetching appointment count for client ${client.id}:`, countError);
@@ -60,7 +60,7 @@ export const getClientById = async (clientId: string): Promise<Client | null> =>
       .from('appointments')
       .select('*', { count: 'exact', head: true })
       .eq('client_id', clientId)
-      .eq('status', 'completed');
+      .eq('status', 'completed'); // Both walk-in and appointment types are included since we only filter by status
 
     if (countError) {
       console.error(`Error fetching appointment count for client ${clientId}:`, countError);
