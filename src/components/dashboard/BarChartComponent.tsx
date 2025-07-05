@@ -16,8 +16,8 @@ interface BarChartComponentProps {
 }
 
 export const BarChartComponent = ({ 
-  data,
-  bars,
+  data = [],
+  bars = [],
   title,
   height = 300,
   isCurrency = false,
