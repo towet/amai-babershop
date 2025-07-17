@@ -36,6 +36,16 @@ const BarberDashboard = () => {
   const [syncStatus, setSyncStatus] = useState<'synced'|'syncing'|'error'|'offline'>('synced');
   const [isOffline, setIsOffline] = useState<boolean>(false);
 
+  useEffect(() => {
+    if (barber?.id) {
+      const fetchStats = async () => {
+        const stats = await getBarberStats(barber.id);
+        setBarberStats(stats);
+      };
+      fetchStats();
+    }
+  }, [barber]);
+
   const renderStarRating = (rating: number, starSize: number = 5) => {
     const stars = [];
     const effectivelyFullStars = Math.round(rating); // Use Math.round for display simplicity
@@ -633,21 +643,25 @@ const BarberDashboard = () => {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <BarChartComponent
+            title="Cuts & Commission - Last 7 Days"
             data={(barberStats?.dailyStats || []).map(day => ({
               name: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
-              value: day.cuts
+              Cuts: day.cuts,
+              Commission: day.commission
             }))}
-            dataKey="value"
-            title="Cuts - Last 7 Days"
+            bars={[
+              { key: 'Cuts', color: '#3b82f6', name: 'Cuts' },
+              { key: 'Commission', color: '#10b981', name: 'Commission (₺)' }
+            ]}
+            stacked={true}
           />
           <BarChartComponent
+            title="Monthly Commission"
             data={(barberStats?.monthlyStats || []).map(stat => ({
               name: stat.month,
-              value: stat.commission,
-              cuts: stat.cuts
+              value: stat.commission
             }))}
-            dataKey="value"
-            title="Monthly Commission"
+            bars={[{ key: 'value', color: '#10b981', name: 'Commission' }]}
             isCurrency={true}
           />
         </div>

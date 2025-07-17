@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from '../ui/use-toast';
 import { Appointment } from '@/lib/types';
 import { X, Loader2 } from 'lucide-react';
 import { getAllClients } from '@/lib/services/client-service';
@@ -130,22 +131,38 @@ const WalkInForm = ({ onSubmit, onCancel }: WalkInFormProps) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validate()) {
       return;
     }
 
-    // For Supabase, we don't need to generate an ID, it will do that for us
-    // We just need to prepare the data correctly
     const submittedWalkIn: Appointment = {
       ...form,
       type: 'walk-in',
       updatedAt: new Date().toISOString()
     };
 
-    onSubmit(submittedWalkIn);
+    try {
+      await onSubmit(submittedWalkIn);
+    } catch (error) {
+      let errorMessage = 'There was a problem creating this walk-in appointment. Please try again.';
+      if (error && typeof error === 'object' && 'message' in error) {
+        if (
+          error.message === 'This barber is already booked for the selected time. Please choose a different time.'
+        ) {
+          errorMessage = 'This barber is already booked for the selected time. Please select a different time slot.';
+        } else {
+          errorMessage = `Booking failed: ${error.message}`;
+        }
+      }
+      toast({
+        title: 'Booking Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
   };
 
   // Available barbers are already filtered in the useEffect

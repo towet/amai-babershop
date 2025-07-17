@@ -118,8 +118,15 @@ const AppointmentsManagement = () => {
     return matchesSearchTerm && matchesStatusFilter && matchesTypeFilter && matchesDateFilter;
   });
 
+  // Sort appointments by date and time descending before grouping
+  const sortedFilteredAppointments = [...filteredAppointments].sort((a, b) => {
+    const dateA = new Date(`${a.date}T${a.time}`).getTime();
+    const dateB = new Date(`${b.date}T${b.time}`).getTime();
+    return dateB - dateA;
+  });
+
   // Group appointments by date
-  const appointmentsByDate = filteredAppointments.reduce((acc, appointment) => {
+  const appointmentsByDate = sortedFilteredAppointments.reduce((acc, appointment) => {
     if (!acc[appointment.date]) {
       acc[appointment.date] = [];
     }
@@ -127,8 +134,8 @@ const AppointmentsManagement = () => {
     return acc;
   }, {} as Record<string, Appointment[]>);
 
-  // Sort dates in ascending order
-  const sortedDates = Object.keys(appointmentsByDate).sort();
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(appointmentsByDate).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
 
   // Handle appointment status change
   const handleStatusChange = async (id: string, status: AppointmentStatus) => {

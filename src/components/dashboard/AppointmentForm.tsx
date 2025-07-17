@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
+import { toast } from '../ui/use-toast';
 import { Appointment, AppointmentStatus, AppointmentType } from '@/lib/types';
 import { X, Trash2, Loader2 } from 'lucide-react';
 import { getAllBarbers } from '@/lib/services/barber-service';
 import { getAllServices } from '@/lib/services/service-service';
+import Select from 'react-select';
+import { getAvailableTimeSlotsForBarber } from '@/lib/services/booking-service';
 import { getAllClients } from '@/lib/services/client-service';
 import { Barber, Service, Client } from '@/lib/types';
 
 interface AppointmentFormProps {
   appointment?: Appointment | null;
-  onSubmit: (appointment: Appointment) => void;
+  onSubmit: (appointment: Appointment) => Promise<void>; // Allow async submission
   onCancel: () => void;
   onDelete?: () => void;
 }
@@ -30,6 +33,7 @@ const defaultAppointment: Appointment = {
   walkInClientName: '' // New field for walk-in clients
 };
 
+// NOTE: This static generator is kept for fallback while initial data loads.
 const generateTimeSlots = () => {
   const slots = [];
   for (let i = 10; i <= 22; i++) {
@@ -44,12 +48,14 @@ const AppointmentForm = ({ appointment, onSubmit, onCancel, onDelete }: Appointm
   const [liveServices, setLiveServices] = useState<Service[]>([]);
   const [liveClients, setLiveClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState<string[]>(generateTimeSlots());
   const isEditing = Boolean(appointment);
   const [form, setForm] = useState<Appointment>(appointment || defaultAppointment);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedService, setSelectedService] = useState<Service | undefined>(undefined);
   const [selectedBarber, setSelectedBarber] = useState<Barber | undefined>(undefined);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const clientOptions = liveClients.map(c => ({ value: c.id, label: `${c.name}${c.phone ? ` (${c.phone})` : ''}` }));
   const [isWalkIn, setIsWalkIn] = useState(form.type === 'walk-in');
 
   // Generate time slots for appointment
@@ -92,6 +98,27 @@ const AppointmentForm = ({ appointment, onSubmit, onCancel, onDelete }: Appointm
     };
     fetchData();
   }, [appointment, form.serviceId, form.barberId]); // Fetch data on mount with dependencies
+
+  // Fetch available time slots when barber or date changes
+  useEffect(() => {
+    const fetchSlots = async () => {
+      if (form.barberId && form.date) {
+        try {
+          const slots = await getAvailableTimeSlotsForBarber(form.barberId, form.date);
+          setAvailableSlots(slots);
+          // If selected time is no longer available, clear it
+          if (!slots.includes(form.time)) {
+            setForm(prev => ({ ...prev, time: '' }));
+          }
+        } catch (err) {
+          console.error('Failed to fetch available slots', err);
+        }
+      } else {
+        setAvailableSlots(generateTimeSlots());
+      }
+    };
+    fetchSlots();
+  }, [form.barberId, form.date]);
 
   useEffect(() => {
     if (appointment && liveServices.length > 0 && liveBarbers.length > 0) {
@@ -206,31 +233,43 @@ const AppointmentForm = ({ appointment, onSubmit, onCancel, onDelete }: Appointm
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validate()) {
       return;
     }
 
-    // For new appointments, don't generate an ID - let Supabase handle it
-    // For existing appointments, keep the existing ID
     const submittedAppointmentData: Partial<Appointment> = {
       ...form,
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
-    // Remove the ID completely for new appointments so Supabase will generate a proper UUID
     if (!isEditing) {
       delete submittedAppointmentData.id;
     }
-    
-    // Ensure walkInClientName is not sent as it's no longer used for walk-ins via this form
+
     if (submittedAppointmentData.type === 'walk-in') {
-        submittedAppointmentData.walkInClientName = undefined; 
+      submittedAppointmentData.walkInClientName = undefined;
     }
 
-    onSubmit(submittedAppointmentData as Appointment);
+    try {
+      await onSubmit(submittedAppointmentData as Appointment);
+    } catch (error) {
+      let errorMessage = 'Failed to create appointment. Please try again.';
+      if (error && typeof error === 'object' && 'message' in error) {
+        if (error.message.includes('This barber is already booked for the selected time')) {
+          errorMessage = 'This barber is already booked for the selected time. Please select a different time slot.';
+        } else {
+          errorMessage = `Booking failed: ${error.message}`;
+        }
+      }
+      toast({
+        title: 'Booking Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
   };
 
   return (
@@ -274,9 +313,22 @@ const AppointmentForm = ({ appointment, onSubmit, onCancel, onDelete }: Appointm
                 <label htmlFor="clientIdWalkIn" className="block text-sm font-medium text-gray-700">
                   Client (Walk-in) <span className="text-red-500">*</span>
                 </label>
+                <Select
+                  className="mt-1"
+                  options={clientOptions}
+                  placeholder="Search client by name or phone…"
+                  value={clientOptions.find(o => o.value === form.clientId) || null}
+                  onChange={(opt) => setForm(prev => ({ ...prev, clientId: opt ? (opt as any).value : '' }))}
+                  isClearable
+                  filterOption={(candidate, input) => candidate.label.toLowerCase().includes(input.toLowerCase())}
+                />
+                {/* Hidden native select for form compatibility */}
                 <select
-                  name="clientId" // Name is 'clientId'
-                  id="clientIdWalkIn" // Unique ID for the walk-in version
+                  name="clientId"
+                  id="clientIdWalkIn"
+                  value={form.clientId}
+                  onChange={handleChange}
+                  className="hidden"
                   value={form.clientId}
                   onChange={handleChange} // Use the main handleChange
                   className={`mt-1 block w-full border ${ 
@@ -304,9 +356,21 @@ const AppointmentForm = ({ appointment, onSubmit, onCancel, onDelete }: Appointm
                 <label htmlFor="clientIdScheduled" className="block text-sm font-medium text-gray-700">
                   Client <span className="text-red-500">*</span>
                 </label>
+                <Select
+                  className="mt-1"
+                  options={clientOptions}
+                  placeholder="Search client by name or phone…"
+                  value={clientOptions.find(o => o.value === form.clientId) || null}
+                  onChange={(opt) => setForm(prev => ({ ...prev, clientId: opt ? (opt as any).value : '' }))}
+                  isClearable
+                  filterOption={(candidate, input) => candidate.label.toLowerCase().includes(input.toLowerCase())}
+                />
                 <select
-                  name="clientId" // Name is 'clientId'
-                  id="clientIdScheduled" // Unique ID for the scheduled version
+                  name="clientId"
+                  id="clientIdScheduled"
+                  value={form.clientId}
+                  onChange={handleChange}
+                  className="hidden"
                   value={form.clientId}
                   onChange={handleChange}
                   className={`mt-1 block w-full border ${
@@ -413,7 +477,7 @@ const AppointmentForm = ({ appointment, onSubmit, onCancel, onDelete }: Appointm
                 } rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-amber-500 focus:border-amber-500 sm:text-sm`}
               >
                 <option value="">Select a time</option>
-                {timeSlots.map((time) => (
+                {availableSlots.map((time) => (
                   <option key={time} value={time}>
                     {time}
                   </option>

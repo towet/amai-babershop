@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
 import { getFinancialData } from '@/lib/services/financial-service';
+import { addPayout, getPayouts, Payout } from '@/lib/services/payout-service';
+import { useAuth } from '@/lib/auth/auth-context';
 import { FinancialEntry } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChartComponent } from '@/components/dashboard/BarChartComponent';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 export const FinancialReport = () => {
   const [data, setData] = useState<FinancialEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [payoutAmount, setPayoutAmount] = useState('');
+  const [payoutReason, setPayoutReason] = useState('');
+
+  const { user } = useAuth();
   const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -18,6 +26,8 @@ export const FinancialReport = () => {
       setLoading(true);
       const result = await getFinancialData(startDate, endDate);
       setData(result);
+      const payoutData = await getPayouts(startDate, endDate);
+      setPayouts(payoutData);
       setLoading(false);
     };
     fetchData();
@@ -26,9 +36,21 @@ export const FinancialReport = () => {
   const totalRevenue = data.reduce((acc, item) => acc + item.totalRevenue, 0);
   const totalCommission = data.reduce((acc, item) => acc + item.barberCommission, 0);
   const totalShopRevenue = totalRevenue - totalCommission;
+  const totalPayouts = payouts.reduce((acc, p) => acc + p.amount, 0);
+  const netShopRevenue = totalShopRevenue - totalPayouts;
+  const payoutsChartData = Object.entries(
+    payouts.reduce((acc: Record<string, number>, p) => {
+      const date = p.created_at.split('T')[0];
+      acc[date] = (acc[date] || 0) + p.amount;
+      return acc;
+    }, {})
+  )
+    .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+    .map(([date, amount]) => ({ name: date, value: amount }));
 
   const pieData = [
-    { name: 'Shop Revenue', value: totalShopRevenue },
+    { name: 'Net Shop Revenue', value: netShopRevenue },
+    { name: 'Payouts', value: totalPayouts },
     { name: 'Barber Commission', value: totalCommission },
   ];
 
@@ -75,10 +97,18 @@ export const FinancialReport = () => {
         </Card>
         <Card className="transform hover:scale-105 transition-transform duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Shop Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium">Payouts</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600">{totalShopRevenue.toFixed(2)} Lira</p>
+            <p className="text-2xl font-bold text-red-600">{totalPayouts.toFixed(2)} Lira</p>
+          </CardContent>
+        </Card>
+        <Card className="transform hover:scale-105 transition-transform duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Net Shop Revenue</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold text-green-600">{netShopRevenue.toFixed(2)} Lira</p>
           </CardContent>
         </Card>
         <Card className="transform hover:scale-105 transition-transform duration-300">
@@ -115,16 +145,99 @@ export const FinancialReport = () => {
             <div className="flex justify-center gap-4 mt-2 text-xs">
               <div className="flex items-center gap-1">
                 <span className="w-3 h-3" style={{ backgroundColor: COLORS[0] }}></span>
-                <span>Shop</span>
+                <span>Net Revenue</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="w-3 h-3" style={{ backgroundColor: COLORS[1] }}></span>
-                <span>Barbers</span>
+                <span>Payouts</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="w-3 h-3" style={{ backgroundColor: COLORS[2] }}></span>
+                <span>Barber Commission</span>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Payout form */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <h2 className="text-lg font-bold mb-4">Record a Payout</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Amount (Lira)</label>
+            <input type="number" step="0.01" value={payoutAmount} onChange={(e)=>setPayoutAmount(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2" />
+          </div>
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700">Reason</label>
+            <input type="text" value={payoutReason} onChange={(e)=>setPayoutReason(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2" />
+          </div>
+          <button
+            onClick={async ()=>{
+              if(!payoutAmount||!payoutReason){alert('Enter amount and reason');return;}
+              const res = await addPayout(Number(payoutAmount), payoutReason, user?.id, user?.email||user?.email);
+              if(res.success){
+                setPayoutAmount(''); setPayoutReason('');
+                const updated = await getPayouts(startDate,endDate);
+                setPayouts(updated);
+              }else{
+                alert(res.error);
+              }
+            }}
+            className="bg-amber-600 text-white py-2 px-4 rounded hover:bg-amber-700 transition-colors">
+            Add Payout
+          </button>
+        </div>
+      </div>
+
+      {/* Payouts Bar Chart */}
+      {payoutsChartData.length > 0 && (
+        <div className="mb-8">
+          <BarChartComponent
+            title="Payouts Over Time"
+            data={payoutsChartData}
+            bars={[{ key: 'value', color: '#f87171', name: 'Payouts' }]}
+            isCurrency={true}
+          />
+        </div>
+      )}
+
+      {/* Payout History */}
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Payout History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Recorded By</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payouts.length > 0 ? (
+                  payouts.map((p) => (
+                    <TableRow key={p.id} className="hover:bg-gray-50">
+                      <TableCell>{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right text-red-600">{p.amount.toFixed(2)}</TableCell>
+                      <TableCell>{p.reason}</TableCell>
+                      <TableCell>{p.user_name || p.user_id}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-gray-500 py-6">No payouts recorded for period.</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Daily Breakdown Table */}
       <Card>

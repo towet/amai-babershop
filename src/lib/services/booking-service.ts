@@ -199,6 +199,20 @@ export const createAppointment = async (appointment: Omit<Appointment, 'id' | 'c
       appointmentData.walk_in_client_name = appointment.walkInClientName;
     }
     
+    // Check for conflicting appointment for this barber at the same date and time
+    const { data: conflictingAppointments, error: conflictError } = await supabase
+      .from('appointments')
+      .select('id')
+      .eq('barber_id', appointment.barberId)
+      .eq('date', appointment.date)
+      .eq('time', appointment.time)
+      .eq('status', 'scheduled'); // Only block if still scheduled
+
+    if (conflictError) throw conflictError;
+    if (conflictingAppointments && conflictingAppointments.length > 0) {
+      throw new Error('This barber is already booked for the selected time. Please choose a different time.');
+    }
+
     // Create the appointment
     const { data, error } = await supabase
       .from('appointments')

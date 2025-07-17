@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getBarberFinancialData } from '@/lib/services/financial-service';
+import { getPayouts, Payout } from '@/lib/services/payout-service';
 import { FinancialEntry } from '@/lib/types';
 import { useAuth } from '@/lib/auth/auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +10,7 @@ export const BarberFinancialReport = () => {
   const { user } = useAuth();
   const [data, setData] = useState<FinancialEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
   const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -22,8 +24,9 @@ export const BarberFinancialReport = () => {
       setLoading(true);
       console.log('[BarberFinancialReport] Fetching with:', { startDate, endDate, userId: user.id });
       const result = await getBarberFinancialData(startDate, endDate, user.id);
-      console.log('[BarberFinancialReport] Result:', result);
       setData(result);
+      const payoutData = await getPayouts(startDate, endDate, user.id);
+      setPayouts(payoutData);
       setLoading(false);
     };
     fetchData();
@@ -32,6 +35,8 @@ export const BarberFinancialReport = () => {
   const totalCommission = data.reduce((acc, item) => acc + Number(item.barberCommission), 0);
   const totalRevenueGenerated = data.reduce((acc, item) => acc + Number(item.totalRevenue), 0);
   const completedAppointments = data.length;
+  const totalPayouts = payouts.reduce((acc, p) => acc + p.amount, 0);
+  const netEarnings = totalCommission - totalPayouts;
 
   if (loading) {
     return <div>Loading...</div>;
@@ -51,7 +56,7 @@ export const BarberFinancialReport = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
         <Card className="transform hover:scale-105 transition-transform duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">My Total Earnings</CardTitle>

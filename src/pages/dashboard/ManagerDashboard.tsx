@@ -8,6 +8,7 @@ import { Calendar, Scissors, TrendingUp, Users, Loader2 } from 'lucide-react';
 import { AppointmentStatus, DashboardStats, Appointment, Barber, ChartData } from '@/lib/types';
 import { Link } from 'react-router-dom';
 import { getDashboardStats, getTodayAppointments } from '@/lib/services/dashboard-service';
+import { getPayouts } from '@/lib/services/payout-service';
 import { getAllBarbers } from '@/lib/services/barber-service';
 import { updateAppointmentStatus } from '@/lib/services/booking-service';
 import { toast } from '@/components/ui/use-toast';
@@ -38,9 +39,24 @@ const ManagerDashboard = () => {
         const allBarbers = await getAllBarbers();
         setBarbers(allBarbers);
         
+        // Fetch payouts for the same 7-day window
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - 6);
+        const payoutList = await getPayouts(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
+        const payoutsByDate: Record<string, number> = {};
+        payoutList.forEach(p => {
+          const label = new Date(p.created_at).toLocaleDateString('en-US', { weekday: 'short' });
+          payoutsByDate[label] = (payoutsByDate[label] || 0) + p.amount;
+        });
+
         // Set real weekly data for charts from dashboardStats
         if (stats.weeklyRevenueData) {
-          setWeeklyRevenue(stats.weeklyRevenueData);
+          const enrichedRevenue = stats.weeklyRevenueData.map(item => ({
+            ...item,
+            payouts: payoutsByDate[item.name] || 0,
+          }));
+          setWeeklyRevenue(enrichedRevenue);
         }
         if (stats.weeklyAppointmentsData) {
           setWeeklyAppointments(stats.weeklyAppointmentsData);
@@ -149,7 +165,8 @@ const ManagerDashboard = () => {
             data={weeklyRevenue}
             bars={[
               { key: 'shopRevenue', color: '#10B981', name: 'Shop Revenue' },
-              { key: 'barberCommission', color: '#3B82F6', name: 'Barber Commission' }
+              { key: 'barberCommission', color: '#3B82F6', name: 'Barber Commission' },
+              { key: 'payouts', color: '#F87171', name: 'Payouts' }
             ]}
             title="Weekly Revenue"
             isCurrency={true}

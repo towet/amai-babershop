@@ -214,9 +214,20 @@ export const BookingModal = ({ isOpen, onClose }: BookingModalProps) => {
       // Show a more specific error message
       let errorMessage = "There was a problem creating your appointment. Please try again.";
       if (error && typeof error === 'object' && 'message' in error) {
-        errorMessage = `Booking failed: ${error.message}`;
+        // Debug: log the error object
+        // eslint-disable-next-line no-console
+        console.error('Booking error object:', error);
+        if (
+          error.message && error.message.includes('This barber is already booked for the selected time')
+        ) {
+          errorMessage = 'This barber is already booked for the selected time. Please select a different time slot.';
+        } else {
+          errorMessage = `Booking failed: ${error.message}`;
+        }
+      } else {
+        // Show the raw error for debugging
+        errorMessage = `Raw error: ${JSON.stringify(error)}`;
       }
-      
       toast({
         title: "Booking Failed",
         description: errorMessage,

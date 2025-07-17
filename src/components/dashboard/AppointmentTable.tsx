@@ -143,6 +143,13 @@ export const AppointmentTable = ({
     }
   };
   
+  // Sort newest first based on createdAt (fallback updatedAt)
+  const sortedAppointments = [...appointments].sort((a, b) => {
+    const dateA = new Date((a.createdAt || a.updatedAt || `${a.date}T${a.time}`) ?? '').getTime();
+    const dateB = new Date((b.createdAt || b.updatedAt || `${b.date}T${b.time}`) ?? '').getTime();
+    return dateB - dateA; // newest / latest time first
+  });
+
   return (
     <div className="bg-white rounded-lg md:rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="px-4 py-3 md:px-6 md:py-4 border-b border-gray-100">
@@ -179,7 +186,7 @@ export const AppointmentTable = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {appointments.map((appointment) => (
+            {sortedAppointments.map((appointment) => (
               <tr key={appointment.id} className="hover:bg-gray-50">
                 <td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap">
                   <div className="flex items-center">
