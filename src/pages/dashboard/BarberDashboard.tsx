@@ -24,8 +24,13 @@ import { supabase } from '@/lib/supabase/supabase';
 
 const BarberDashboard = () => {
   const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [barber, setBarber] = useState<Barber | null>(null);
   const [barberStats, setBarberStats] = useState<BarberStats | null>(null);
+  const [todayAppointments, setTodayAppointments] = useState<Appointment[]>([]);
+  const [chartPeriod, setChartPeriod] = useState<'7days' | '14days' | '30days' | '90days' | 'custom'>('7days');
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
   const [barberAppointments, setBarberAppointments] = useState<Appointment[]>([]);
   const [detailedAppointments, setDetailedAppointments] = useState<AppointmentWithDetails[]>([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState<AppointmentWithDetails[]>([]);
@@ -557,6 +562,7 @@ const BarberDashboard = () => {
             <div className="bg-white p-4 rounded-lg shadow-sm border border-amber-100">
               <p className="text-sm text-gray-500 mb-1">Total Commission</p>
               <p className="text-3xl font-bold text-amber-600">₺{barberStats?.totalCommission || 0}</p>
+              <p className="text-xs text-gray-400 mt-1">All-time total</p>
             </div>
             
             <div className="bg-white p-4 rounded-lg shadow-sm border border-amber-100">
@@ -576,7 +582,7 @@ const BarberDashboard = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard
-            title="Total Cuts"
+            title="Total Cuts (All-time)"
             value={barberStats?.totalCuts || 0}
             icon={<Scissors size={24} />}
           />
@@ -640,20 +646,94 @@ const BarberDashboard = () => {
           </div>
         )}
         
+        {/* Chart Period Selector */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-800">Performance Charts</h3>
+            <div className="flex gap-2">
+              {[
+                { key: '7days', label: '7 Days' },
+                { key: '14days', label: '14 Days' },
+                { key: '30days', label: '30 Days' },
+                { key: '90days', label: '90 Days' },
+                { key: 'custom', label: 'Custom' }
+              ].map(period => (
+                <button
+                  key={period.key}
+                  onClick={() => setChartPeriod(period.key as any)}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    chartPeriod === period.key
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {period.label}
+                </button>
+              ))}
+              {chartPeriod === 'custom' && (
+                <>
+                  <input
+                    type="date"
+                    className="border rounded px-2 py-1 text-sm ml-2"
+                    value={customStartDate}
+                    max={customEndDate || undefined}
+                    onChange={e => setCustomStartDate(e.target.value)}
+                  />
+                  <span className="mx-1">to</span>
+                  <input
+                    type="date"
+                    className="border rounded px-2 py-1 text-sm"
+                    value={customEndDate}
+                    min={customStartDate || undefined}
+                    onChange={e => setCustomEndDate(e.target.value)}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <BarChartComponent
-            title="Cuts & Commission - Last 7 Days"
-            data={(barberStats?.dailyStats || []).map(day => ({
-              name: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
-              Cuts: day.cuts,
-              Commission: day.commission
-            }))}
+            title={(() => {
+              if (chartPeriod === 'custom' && customStartDate && customEndDate) {
+                return `Cuts & Commission (${customStartDate} to ${customEndDate})`;
+              }
+              return `Cuts & Commission - Last ${chartPeriod === '7days' ? '7' : chartPeriod === '14days' ? '14' : chartPeriod === '30days' ? '30' : '90'} Days`;
+            })()}
+            data={(() => {
+              if (chartPeriod === 'custom' && customStartDate && customEndDate && customStartDate <= customEndDate) {
+                return (barberStats?.dailyStats || [])
+                  .filter(day => day.date >= customStartDate && day.date <= customEndDate)
+                  .map(day => ({
+                    name: new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                    Cuts: day.cuts,
+                    Commission: day.commission
+                  }));
+              }
+              const periodDays = chartPeriod === '7days' ? 7 : chartPeriod === '14days' ? 14 : chartPeriod === '30days' ? 30 : 90;
+              return (barberStats?.dailyStats || [])
+                .slice(-periodDays)
+                .map(day => ({
+                  name: chartPeriod === '7days' || chartPeriod === '14days' 
+                    ? new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })
+                    : new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+                  Cuts: day.cuts,
+                  Commission: day.commission
+                }));
+            })()}
             bars={[
               { key: 'Cuts', color: '#3b82f6', name: 'Cuts' },
               { key: 'Commission', color: '#10b981', name: 'Commission (₺)' }
             ]}
-            stacked={true}
+            stacked={false}
+            isCurrency={true}
+            customTotal={(payload) => {
+              // Total should only show commission value, not cuts + commission
+              const commissionItem = payload.find(p => p.dataKey === 'Commission');
+              return commissionItem ? commissionItem.value : 0;
+            }}
           />
           <BarChartComponent
             title="Monthly Commission"

@@ -2,7 +2,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 
 interface ChartData {
   name: string;
-  value: number;
+  value?: number;
   [key: string]: any;
 }
 
@@ -13,6 +13,7 @@ interface BarChartComponentProps {
   height?: number;
   isCurrency?: boolean;
   stacked?: boolean;
+  customTotal?: (payload: any[]) => number;
 }
 
 export const BarChartComponent = ({ 
@@ -21,12 +22,13 @@ export const BarChartComponent = ({
   title,
   height = 300,
   isCurrency = false,
-  stacked = false
+  stacked = false,
+  customTotal
 }: BarChartComponentProps) => {
   
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const total = payload.reduce((sum, p) => sum + p.value, 0);
+      const total = customTotal ? customTotal(payload) : payload.reduce((sum, p) => sum + p.value, 0);
       return (
         <div className="bg-black p-3 rounded shadow text-white text-sm min-w-[150px]">
           <p className="mb-2 font-semibold">{label}</p>

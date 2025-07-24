@@ -198,18 +198,24 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     const weeklyAppointmentsData = [];
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    for (let i = 6; i >= 0; i--) {
+    const daysToGenerate = 90; // Generate 90 days of data for analytics
+    for (let i = daysToGenerate - 1; i >= 0; i--) {
       const day = new Date(); // This is the current date for each iteration's base
       day.setDate(day.getDate() - i); // Calculate the target day by subtracting i
-      const dayStats = await getStatsForDate(day);
       const dayName = dayNames[day.getDay()];
+      const dayStats = await getStatsForDate(day);
 
       weeklyRevenueData.push({
         name: dayName,
+        date: day.toISOString().split('T')[0], // Add real date for filtering
         shopRevenue: dayStats.shopRevenue,
         barberCommission: dayStats.barberCommission,
       });
-      weeklyAppointmentsData.push({ name: dayName, value: dayStats.count + dayStats.walkIns });
+      weeklyAppointmentsData.push({
+        name: dayName,
+        date: day.toISOString().split('T')[0], // Add real date for filtering
+        value: dayStats.count + dayStats.walkIns
+      });
     }
 
     return {

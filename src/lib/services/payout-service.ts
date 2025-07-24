@@ -40,6 +40,10 @@ export const addPayout = async (
 /**
  * Fetch payouts between two dates. If barberId is provided, filter by it.
  */
+export const reversePayout = async (payout: Payout, userId?: string, userName?: string) => {
+  return addPayout(payout.amount, `REVERSAL of ${payout.id}`, userId, userName, payout.barber_id);
+};
+
 export const getPayouts = async (
   startDate: string,
   endDate: string,

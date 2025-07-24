@@ -21,6 +21,9 @@ const ManagerDashboard = () => {
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [weeklyRevenue, setWeeklyRevenue] = useState<ChartData[]>([]);
   const [weeklyAppointments, setWeeklyAppointments] = useState<ChartData[]>([]);
+  const [chartPeriod, setChartPeriod] = useState<'7days' | '14days' | '30days' | '90days' | 'custom'>('7days');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   
   // Load dashboard data on component mount
   useEffect(() => {
@@ -39,24 +42,9 @@ const ManagerDashboard = () => {
         const allBarbers = await getAllBarbers();
         setBarbers(allBarbers);
         
-        // Fetch payouts for the same 7-day window
-        const end = new Date();
-        const start = new Date();
-        start.setDate(end.getDate() - 6);
-        const payoutList = await getPayouts(start.toISOString().split('T')[0], end.toISOString().split('T')[0]);
-        const payoutsByDate: Record<string, number> = {};
-        payoutList.forEach(p => {
-          const label = new Date(p.created_at).toLocaleDateString('en-US', { weekday: 'short' });
-          payoutsByDate[label] = (payoutsByDate[label] || 0) + p.amount;
-        });
-
         // Set real weekly data for charts from dashboardStats
         if (stats.weeklyRevenueData) {
-          const enrichedRevenue = stats.weeklyRevenueData.map(item => ({
-            ...item,
-            payouts: payoutsByDate[item.name] || 0,
-          }));
-          setWeeklyRevenue(enrichedRevenue);
+          setWeeklyRevenue(stats.weeklyRevenueData);
         }
         if (stats.weeklyAppointmentsData) {
           setWeeklyAppointments(stats.weeklyAppointmentsData);
@@ -159,23 +147,114 @@ const ManagerDashboard = () => {
           />
         </div>
         
+        {/* Chart Period Selector */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <h3 className="text-lg font-semibold text-gray-800">Analytics Period</h3>
+            
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Quick Period Buttons */}
+              <div className="flex gap-2">
+                {[
+                  { key: '7days', label: '7 Days' },
+                  { key: '14days', label: '14 Days' },
+                  { key: '30days', label: '30 Days' },
+                  { key: '90days', label: '90 Days' }
+                ].map(period => (
+                  <button
+                    key={period.key}
+                    onClick={() => setChartPeriod(period.key as any)}
+                    className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                      chartPeriod === period.key
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {period.label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setChartPeriod('custom')}
+                  className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                    chartPeriod === 'custom'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Custom
+                </button>
+              </div>
+              
+              {/* Custom Date Range */}
+              {chartPeriod === 'custom' && (
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <span className="text-gray-500 text-sm">to</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <BarChartComponent
-            data={weeklyRevenue}
+            data={(() => {
+              if (chartPeriod === 'custom' && customStartDate && customEndDate) {
+                const startDate = new Date(customStartDate);
+                const endDate = new Date(customEndDate);
+                return weeklyRevenue.filter(item => {
+                  if (!item.date) return false;
+                  const itemDate = new Date(item.date);
+                  return itemDate >= startDate && itemDate <= endDate;
+                });
+              } else {
+                const periodDays = chartPeriod === '7days' ? 7 : chartPeriod === '14days' ? 14 : chartPeriod === '30days' ? 30 : 90;
+                const availableDays = Math.min(periodDays, weeklyRevenue.length);
+                return weeklyRevenue.slice(-availableDays);
+              }
+            })()}
             bars={[
               { key: 'shopRevenue', color: '#10B981', name: 'Shop Revenue' },
-              { key: 'barberCommission', color: '#3B82F6', name: 'Barber Commission' },
-              { key: 'payouts', color: '#F87171', name: 'Payouts' }
+              { key: 'barberCommission', color: '#3B82F6', name: 'Barber Commission' }
             ]}
-            title="Weekly Revenue"
+            title={chartPeriod === 'custom' && customStartDate && customEndDate 
+              ? `Revenue (${customStartDate} to ${customEndDate})`
+              : `Revenue - Last ${chartPeriod === '7days' ? '7' : chartPeriod === '14days' ? '14' : chartPeriod === '30days' ? '30' : '90'} Days`}
             isCurrency={true}
             stacked={true}
           />
           <BarChartComponent
-            data={weeklyAppointments}
+            data={(() => {
+              if (chartPeriod === 'custom' && customStartDate && customEndDate) {
+                const startDate = new Date(customStartDate);
+                const endDate = new Date(customEndDate);
+                return weeklyAppointments.filter(item => {
+                  if (!item.date) return false;
+                  const itemDate = new Date(item.date);
+                  return itemDate >= startDate && itemDate <= endDate;
+                });
+              } else {
+                const periodDays = chartPeriod === '7days' ? 7 : chartPeriod === '14days' ? 14 : chartPeriod === '30days' ? 30 : 90;
+                const availableDays = Math.min(periodDays, weeklyAppointments.length);
+                return weeklyAppointments.slice(-availableDays);
+              }
+            })()}
             bars={[{ key: 'value', color: '#F97316', name: 'Appointments' }]}
-            title="Weekly Appointments"
+            title={chartPeriod === 'custom' && customStartDate && customEndDate 
+              ? `Appointments (${customStartDate} to ${customEndDate})`
+              : `Appointments - Last ${chartPeriod === '7days' ? '7' : chartPeriod === '14days' ? '14' : chartPeriod === '30days' ? '30' : '90'} Days`}
           />
         </div>
         

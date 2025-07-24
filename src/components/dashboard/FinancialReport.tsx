@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getFinancialData } from '@/lib/services/financial-service';
-import { addPayout, getPayouts, Payout } from '@/lib/services/payout-service';
+import { addPayout, getPayouts, reversePayout, Payout } from '@/lib/services/payout-service';
+import { getAllBarbers } from '@/lib/services/barber-service';
+import { Barber } from '@/lib/types';
 import { useAuth } from '@/lib/auth/auth-context';
 import { FinancialEntry } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +18,8 @@ export const FinancialReport = () => {
   const [payouts, setPayouts] = useState<Payout[]>([]);
   const [payoutAmount, setPayoutAmount] = useState('');
   const [payoutReason, setPayoutReason] = useState('');
+  const [selectedBarberId, setSelectedBarberId] = useState('');
+  const [barbers, setBarbers] = useState<Barber[]>([]);
 
   const { user } = useAuth();
   const [startDate, setStartDate] = useState(new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0]);
@@ -24,10 +28,14 @@ export const FinancialReport = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const result = await getFinancialData(startDate, endDate);
+      const [result, payoutData, barbersData] = await Promise.all([
+        getFinancialData(startDate, endDate),
+        getPayouts(startDate, endDate),
+        getAllBarbers()
+      ]);
       setData(result);
-      const payoutData = await getPayouts(startDate, endDate);
       setPayouts(payoutData);
+      setBarbers(barbersData);
       setLoading(false);
     };
     fetchData();
@@ -36,8 +44,14 @@ export const FinancialReport = () => {
   const totalRevenue = data.reduce((acc, item) => acc + item.totalRevenue, 0);
   const totalCommission = data.reduce((acc, item) => acc + item.barberCommission, 0);
   const totalShopRevenue = totalRevenue - totalCommission;
-  const totalPayouts = payouts.reduce((acc, p) => acc + p.amount, 0);
-  const netShopRevenue = totalShopRevenue - totalPayouts;
+  const totalPayouts = payouts.reduce((acc, p) => {
+    // If it's a reversal, subtract the amount instead of adding
+    if (p.reason.includes('REVERSAL of')) {
+      return acc - p.amount;
+    }
+    return acc + p.amount;
+  }, 0);
+  const netShopRevenue = totalShopRevenue;
   const payoutsChartData = Object.entries(
     payouts.reduce((acc: Record<string, number>, p) => {
       const date = p.created_at.split('T')[0];
@@ -50,7 +64,6 @@ export const FinancialReport = () => {
 
   const pieData = [
     { name: 'Net Shop Revenue', value: netShopRevenue },
-    { name: 'Payouts', value: totalPayouts },
     { name: 'Barber Commission', value: totalCommission },
   ];
 
@@ -149,10 +162,6 @@ export const FinancialReport = () => {
               </div>
               <div className="flex items-center gap-1">
                 <span className="w-3 h-3" style={{ backgroundColor: COLORS[1] }}></span>
-                <span>Payouts</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="w-3 h-3" style={{ backgroundColor: COLORS[2] }}></span>
                 <span>Barber Commission</span>
               </div>
             </div>
@@ -163,7 +172,20 @@ export const FinancialReport = () => {
       {/* Payout form */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
         <h2 className="text-lg font-bold mb-4">Record a Payout</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Barber</label>
+            <select 
+              value={selectedBarberId} 
+              onChange={(e)=>setSelectedBarberId(e.target.value)} 
+              className="mt-1 block w-full rounded-md border-gray-300 p-2"
+            >
+              <option value="">Select Barber</option>
+              {barbers.map(barber => (
+                <option key={barber.id} value={barber.id}>{barber.name}</option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Amount (Lira)</label>
             <input type="number" step="0.01" value={payoutAmount} onChange={(e)=>setPayoutAmount(e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 p-2" />
@@ -174,14 +196,21 @@ export const FinancialReport = () => {
           </div>
           <button
             onClick={async ()=>{
-              if(!payoutAmount||!payoutReason){alert('Enter amount and reason');return;}
-              const res = await addPayout(Number(payoutAmount), payoutReason, user?.id, user?.email||user?.email);
-              if(res.success){
-                setPayoutAmount(''); setPayoutReason('');
+              if(!selectedBarberId||!payoutAmount||!payoutReason){alert('Please select barber, enter amount and reason');return;}
+              const selectedBarber = barbers.find(b => b.id === selectedBarberId);
+              const result = await addPayout(
+                parseFloat(payoutAmount),
+                payoutReason,
+                user?.id,
+                user?.email,
+                selectedBarberId || undefined
+              );
+              if(result.success){
+                setPayoutAmount(''); setPayoutReason(''); setSelectedBarberId('');
                 const updated = await getPayouts(startDate,endDate);
                 setPayouts(updated);
               }else{
-                alert(res.error);
+                alert(result.error);
               }
             }}
             className="bg-amber-600 text-white py-2 px-4 rounded hover:bg-amber-700 transition-colors">
@@ -215,7 +244,9 @@ export const FinancialReport = () => {
                   <TableHead>Date</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead>Barber</TableHead>
                   <TableHead>Recorded By</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -225,12 +256,36 @@ export const FinancialReport = () => {
                       <TableCell>{new Date(p.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right text-red-600">{p.amount.toFixed(2)}</TableCell>
                       <TableCell>{p.reason}</TableCell>
+                      <TableCell>{barbers.find(b => b.id === p.barber_id)?.name || 'N/A'}</TableCell>
                       <TableCell>{p.user_name || p.user_id}</TableCell>
+                      <TableCell>
+                        <button
+                          className="text-xs text-amber-600 hover:underline"
+                          onClick={async ()=>{
+                            if(!confirm('Reverse this payout?')) return;
+                            try {
+                              const res = await reversePayout(p, user?.id, user?.email);
+                              if(res.success){
+                                // Refresh both payouts and financial data
+                                const [updatedPayouts, updatedFinancials] = await Promise.all([
+                                  getPayouts(startDate, endDate),
+                                  getFinancialData(startDate, endDate)
+                                ]);
+                                setPayouts(updatedPayouts);
+                                setData(updatedFinancials);
+                              }
+                            } catch (error) {
+                              console.error('Error reversing payout:', error);
+                              alert('Failed to reverse payout. Please try again.');
+                            }
+                          }}
+                        >Reverse</button>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-gray-500 py-6">No payouts recorded for period.</TableCell>
+                    <TableCell colSpan={6} className="text-center text-gray-500 py-6">No payouts recorded for period.</TableCell>
                   </TableRow>
                 )}
               </TableBody>

@@ -329,11 +329,11 @@ export const getBarberStats = async (barberId: string) => {
     
     console.log('Fresh barber data retrieved:', freshBarberData);
     
-    // Get daily stats for the last 7 days
+    // Get daily stats for the last 90 days
     const today = new Date();
     const dailyStats = [];
-    
-    for (let i = 6; i >= 0; i--) {
+    const daysToGenerate = 90;
+    for (let i = daysToGenerate - 1; i >= 0; i--) {
       const date = new Date();
       date.setDate(today.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
