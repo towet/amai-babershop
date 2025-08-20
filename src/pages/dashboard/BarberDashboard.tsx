@@ -20,6 +20,7 @@ import {
   getUpcomingBarberAppointmentsAdmin
 } from '../../lib/services/admin-appointment-service';
 import { toast } from '@/components/ui/use-toast';
+import { ServiceUnavailableError, getErrorMessage } from '@/lib/utils/errorHandler';
 
 import { supabase } from '@/lib/supabase/supabase';
 
@@ -342,14 +343,30 @@ const BarberDashboard = () => {
       console.error('Error loading barber data:', error);
       setSyncStatus('error');
       
+      // Handle service unavailable errors gracefully
+      if (error instanceof ServiceUnavailableError) {
+        toast({
+          title: "Service Temporarily Unavailable",
+          description: "Database is experiencing high load. Showing cached data if available.",
+          variant: "destructive"
+        });
+      }
+      
       // Try loading from cache if offline or if online loading fails
       if (!navigator.onLine || (loadDashboardFromCache(barberId))) {
         setIsOffline(true);
         setSyncStatus('offline');
         toast({
           title: "Offline Mode",
-          description: "You're currently offline. Showing cached data.",
+          description: error instanceof ServiceUnavailableError ? "Database unavailable. Showing cached data." : "You're currently offline. Showing cached data.",
           variant: "default"
+        });
+      } else {
+        // Show user-friendly error message
+        toast({
+          title: "Loading Error",
+          description: getErrorMessage(error),
+          variant: "destructive"
         });
       }
     } finally {

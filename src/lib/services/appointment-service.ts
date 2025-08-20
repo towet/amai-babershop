@@ -1,16 +1,21 @@
 import { supabase } from '../supabase/supabase';
 import { Appointment, AppointmentStatus, AppointmentType, AppointmentWithDetails } from '../types';
+import { withSupabaseRetry } from '../utils/retry';
+import { handleSupabaseError, ServiceUnavailableError } from '../utils/errorHandler';
 
-// Get all appointments
+// Get all appointments with error handling
 export const getAllAppointments = async (): Promise<Appointment[]> => {
   try {
-    const { data, error } = await supabase
-      .from('appointments')
-      .select('*')
-      .order('date', { ascending: false })
-      .order('time', { ascending: false });
-    
-    if (error) throw error;
+    const data = await withSupabaseRetry(async () => {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .order('date', { ascending: false })
+        .order('time', { ascending: false });
+      
+      if (error) handleSupabaseError(error, 'Get all appointments');
+      return data || [];
+    }, 'Get all appointments');
     
     // Map the database format to our application format
     return data.map((item: any) => ({
@@ -31,6 +36,10 @@ export const getAllAppointments = async (): Promise<Appointment[]> => {
       walkInClientName: item.walk_in_client_name,
     }));
   } catch (error) {
+    if (error instanceof ServiceUnavailableError) {
+      console.warn('Database unavailable, returning empty appointments list');
+      return [];
+    }
     console.error('Error fetching appointments:', error);
     throw error;
   }
@@ -113,19 +122,22 @@ export const getAllBarberAppointments = async (barberId: string, limit: number =
       return [];
     }
     
-    // Find appointments for the barber with pagination to improve performance
-    let { data, error } = await supabase
-      .from('appointments')
-      .select('*, services(name, price), clients(name, email, phone)')
-      .eq('barber_id', barberId)
-      .order('date', { ascending: false })
-      .order('time', { ascending: true })
-      .range(offset, offset + limit - 1);
-    
-    if (error) {
-      console.error('Error fetching all appointments by barber_id:', error);
-      throw error;
-    }
+    const data = await withSupabaseRetry(async () => {
+      // Find appointments for the barber with pagination to improve performance
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('*, services(name, price), clients(name, email, phone)')
+        .eq('barber_id', barberId)
+        .order('date', { ascending: false })
+        .order('time', { ascending: true })
+        .range(offset, offset + limit - 1);
+      
+      if (error) {
+        handleSupabaseError(error, `Get barber appointments for ${barberId}`);
+      }
+      
+      return data || [];
+    }, `Get barber appointments for ${barberId}`);
     
     console.log(`Found ${data?.length || 0} total appointments for barber ID ${barberId}`);
     
@@ -170,6 +182,10 @@ export const getAllBarberAppointments = async (barberId: string, limit: number =
     
     return data.map(item => mapAppointment(item));
   } catch (error) {
+    if (error instanceof ServiceUnavailableError) {
+      console.warn('Database unavailable, returning empty appointments list for barber:', barberId);
+      return [];
+    }
     console.error('Error fetching all barber appointments:', error);
     throw error;
   }
